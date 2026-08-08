@@ -191,11 +191,7 @@ export default function TopicQuiz() {
         });
       if (undones.length > 0) {
         const next = undones[0];
-        localStorage.setItem('icecold-quiz-topic', JSON.stringify({
-          topicId: next.topicId,
-          topicName: next.topicName,
-        }));
-        navigate('/quiz');
+        handleSelectTopic(next.topicId, next.topicName);
         return;
       }
     }
@@ -244,33 +240,34 @@ export default function TopicQuiz() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stage, loading, questions, currentQ, answers, showExplanation, submittedQuestions, handlePrev, handleNext, submitAnswer, finishQuiz, handleAnswer]);
 
-  // Auto-start if preselected (via "Next Topic" from quiz results)
+  // Auto-start if preselected (via a plan card or the quiz results).
+  // Keep this synchronous: under React StrictMode an async timer scheduled
+  // by the first effect pass can be cancelled before the second pass runs.
   useEffect(() => {
     if (stage !== 'select') return;
     const stored = localStorage.getItem('icecold-quiz-topic');
     if (!stored) return;
-    localStorage.removeItem('icecold-quiz-topic');
     try {
       const parsed = JSON.parse(stored);
       const topic = topics.find(t => t.id === parsed?.topicId);
-      if (!topic) return;
+      if (!topic) {
+        localStorage.removeItem('icecold-quiz-topic');
+        return;
+      }
+
+      localStorage.removeItem('icecold-quiz-topic');
       setSelectedTopicId(topic.id);
       setSelectedTopicName(topic.name);
-      setLoading(true);
-      const timer = setTimeout(() => {
-        const qs = generateTopicQuiz(topic.name, 5);
-        setQuestions(qs);
-        setAnswers({});
-        setCurrentQ(0);
-        setShowExplanation(false);
-        setQuizScore(0);
-        setSubmittedQuestions([]);
-        setFinished(false);
-        setStage('taking');
-        setLoading(false);
-      }, 400);
-      return () => clearTimeout(timer);
+      setQuestions(generateTopicQuiz(topic.name, 5));
+      setAnswers({});
+      setCurrentQ(0);
+      setShowExplanation(false);
+      setQuizScore(0);
+      setSubmittedQuestions([]);
+      setFinished(false);
+      setStage('taking');
     } catch {
+      localStorage.removeItem('icecold-quiz-topic');
       /* invalid JSON — ignore */
     }
   }, [stage, topics]);

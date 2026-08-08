@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { QuizResult, StudyPlan, SprintSetup } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { getTopicPriorityScore } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -53,16 +54,13 @@ export default function Progress() {
 
     const findNextPriorityTopic = () => {
       if (!setup || !plan) return null;
-      const priorityOrder: Record<string, number> = { 'low': 0, 'medium': 1, 'high': 2 };
       const sorted = [...plan.blocks]
         .filter(b => !b.substantiallyCovered && b.topicId !== 'review-break')
         .sort((a, b) => {
           const aTopic = setup.topics.find(t => t.id === a.topicId);
           const bTopic = setup.topics.find(t => t.id === b.topicId);
           if (!aTopic || !bTopic) return 0;
-          const aScore = priorityOrder[aTopic.confidence] + priorityOrder[aTopic.importance] * 3;
-          const bScore = priorityOrder[bTopic.confidence] + priorityOrder[bTopic.importance] * 3;
-          return aScore - bScore;
+          return getTopicPriorityScore(bTopic) - getTopicPriorityScore(aTopic);
         });
       return sorted[0] || null;
     };
