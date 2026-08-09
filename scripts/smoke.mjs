@@ -1,7 +1,11 @@
 import { chromium } from 'playwright';
 
 const baseUrl = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:4173';
-const browser = await chromium.launch({ headless: true });
+const browserChannel = process.env.SMOKE_BROWSER;
+const browser = await chromium.launch({
+  headless: true,
+  ...(browserChannel ? { channel: browserChannel } : {}),
+});
 const page = await browser.newPage();
 
 function assert(condition, message) {
@@ -25,7 +29,7 @@ try {
       await shortAnswer.fill('review');
       await shortAnswer.press('Enter');
     } else {
-      const optionButtons = page.locator('main button').filter({ hasText: /^[A-D]\s/ });
+      const optionButtons = page.locator('main button').filter({ hasText: /^[A-D]/ });
       assert(await optionButtons.count() > 0, `No answer options found for question ${question + 1}`);
       await optionButtons.first().click();
       await page.getByRole('button', { name: 'Submit Answer' }).click();
@@ -42,9 +46,9 @@ try {
   await page.getByText(/Substantially Covered|Targeted Practice Needed|Review and Retry/).waitFor();
   await page.goto(`${baseUrl}/progress`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'Progress' }).waitFor();
-  await page.getByText('Cell Biology').waitFor();
+  await page.getByText('Cell Biology', { exact: true }).first().waitFor();
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByText('Cell Biology').waitFor();
+  await page.getByText('Cell Biology', { exact: true }).first().waitFor();
 
   await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Reset Sprint' }).click();
@@ -53,6 +57,11 @@ try {
   await page.goto(`${baseUrl}/quiz`, { waitUntil: 'networkidle' });
   await page.getByText('No topics yet').waitFor();
   console.log(`Smoke passed: ${baseUrl}`);
+} catch (error) {
+  const body = await page.locator('body').innerText().catch(() => '');
+  console.error(`Smoke failed at ${page.url()} (${await page.title()})`);
+  console.error(body.slice(0, 600).replace(/\s+/g, ' '));
+  throw error;
 } finally {
   await browser.close();
 }

@@ -59,7 +59,8 @@ Source readiness is complete. The remaining P0 release work requires the functio
 - [x] Progress and quiz results persist through refresh using localStorage.
 - [x] Reset Sprint clears setup, plan, quiz results, and quiz handoff state.
 - [x] `npm.cmd run smoke` covers the complete source workflow, refresh persistence, and reset behavior.
-- [ ] Execute the smoke workflow against a fresh browser/public deployment; this remains external/runtime verification.
+- [x] Execute the complete smoke workflow against the local source in Edge; it passes setup, plan budget, five-question score/feedback, refresh persistence, and reset.
+- [ ] Execute the same workflow against a fresh browser/public deployment; the public URL still serves the old shell.
 
 ## P1 — Add one reliable AI capability
 
