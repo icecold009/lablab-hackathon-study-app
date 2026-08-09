@@ -14,6 +14,7 @@ Current state: the local MVP changes are committed and synced with the remote fe
 - [x] Reused the shared topic-priority scorer for next-topic recommendations.
 - [x] Preserved the plan-to-quiz handoff marker until persisted setup hydration is available, with a localStorage fallback for the topic lookup.
 - [x] Made fallback quiz question and option ordering deterministic per topic.
+- [x] Added a repeatable `npm.cmd run smoke` P0 workflow check for any local or deployed target URL.
 - [x] Expanded the source-repository README with the workflow and local commands.
 - [x] Confirmed `npm.cmd run check` passes locally after the current feature checkpoint.
 
