@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, ArrowLeft, ArrowRight, CheckCircle2, XCircle, Send,
@@ -57,6 +57,7 @@ export default function TopicQuiz() {
   const [submittedQuestions, setSubmittedQuestions] = useState<QuizQuestion[]>([]);
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(false);
+  const autoStartHandledRef = useRef(false);
 
   const topics = useMemo(() => setup?.topics || readPersistedSetup()?.topics || [], [setup]);
 
@@ -257,6 +258,7 @@ export default function TopicQuiz() {
     if (!persistedSetup) return;
     const stored = localStorage.getItem('icecold-quiz-topic');
     if (!stored) return;
+    if (autoStartHandledRef.current) return;
     try {
       const parsed = JSON.parse(stored);
       const topic = persistedSetup.topics.find(t => t.id === parsed?.topicId);
@@ -265,7 +267,9 @@ export default function TopicQuiz() {
         return;
       }
 
-      localStorage.removeItem('icecold-quiz-topic');
+      // Keep the marker through StrictMode's effect replay. Removing it
+      // before the second pass can leave the route mounted with no quiz.
+      autoStartHandledRef.current = true;
       setSelectedTopicId(topic.id);
       setSelectedTopicName(topic.name);
       setQuestions(generateTopicQuiz(topic.name, 5));
