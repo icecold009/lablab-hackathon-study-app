@@ -12,8 +12,17 @@ Current state: the local MVP changes are committed and synced with the remote fe
 - [x] Cleared stale quiz results when starting a new sprint or regenerating a plan.
 - [x] Cleared stale quiz-topic navigation state when starting or regenerating a sprint.
 - [x] Reused the shared topic-priority scorer for next-topic recommendations.
+- [x] Preserved the plan-to-quiz handoff marker until persisted setup hydration is available, with a localStorage fallback for the topic lookup.
 - [x] Expanded the source-repository README with the workflow and local commands.
-- [x] Confirmed `npm.cmd run check` passes locally.
+- [x] Confirmed `npm.cmd run check` passes locally after commit `583ac10`.
+
+## Preview checkpoint — 2026-08-09
+
+- [x] Authenticated native.builder project workspace and preview were inspected.
+- [x] Preview exposed a real plan-to-quiz race: clicking `Start Quiz — Cell Biology` reached `/quiz` with no question controls until reload.
+- [x] Hardened the source implementation and pushed commit `583ac10` on `codex/icecold-sprint-core-workflow`.
+- [ ] Native.builder is not yet confirmed to contain commit `583ac10`; its rebuilt preview still reproduced the blank quiz state during verification.
+- [ ] Public deployment remains unverified and unchanged.
 
 ## P0 — Publish a working submission
 
