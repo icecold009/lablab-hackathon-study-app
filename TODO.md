@@ -24,16 +24,17 @@ Current state: the local MVP changes are committed and synced with the remote fe
 - [x] Preview exposed and then cleared a real plan-to-quiz race: clicking `Start Quiz — Cell Biology` now reaches the first question and answer controls without reload.
 - [x] Hardened the source implementation against persisted-setup and React StrictMode races; pushed commit `b7faf27` on `codex/icecold-sprint-core-workflow`.
 - [x] Builder preview reached question 5 with `5/5 answered`, `Correct: 5`, and the `Finish Quiz` control visible.
-- [ ] Native.builder is not yet confirmed to contain source commit `b7faf27`; Builder's internal one-file repair is not GitHub-synced.
-- [ ] Builder publish is blocked until its GitHub integration is connected.
-- [ ] Public deployment remains unverified and unchanged.
+- [ ] Native.builder is not yet confirmed to contain source commit `a23b4fa`; Builder's internal one-file repair is not GitHub-synced.
+- [x] Builder publish control reported success for `https://icecold-sprint.nativelyai.app`.
+- [ ] The named public URL still serves the old shell after publish.
 
 ## P0 — Publish a working submission
 
 - [ ] Confirm the exact hackathon submission deadline and required form fields.
 - [ ] Confirm that native.builder can sync this feature branch, or document the approved sync path.
 - [ ] Sync the current application into the native.builder project.
-- [ ] Publish the application to the intended public URL.
+- [x] Trigger Builder publish for the intended public URL.
+- [ ] Confirm the intended public URL serves the functional workflow, not the old shell.
 - [ ] Test the public app in a fresh, logged-out browser.
 - [ ] Verify this complete path without manual recovery:
   - [ ] Choose the Biology sample sprint.
@@ -45,7 +46,7 @@ Current state: the local MVP changes are committed and synced with the remote fe
   - [ ] See a different next recommendation based on the result.
   - [ ] Refresh and confirm progress persists.
   - [ ] Reset and confirm the sprint returns to a clean state.
-- [ ] Record the public URL, verification date, browser, and result.
+- [x] Record the public URL, verification date, browser, and result in the evidence repository.
 
 ## P1 — Add one reliable AI capability
 
@@ -67,8 +68,8 @@ Current state: the local MVP changes are committed and synced with the remote fe
 
 ## P1 — Validation
 
-- [ ] Run `npx.cmd tsc --noEmit`.
-- [ ] Run `npm.cmd run build`.
+- [x] Run `npx.cmd tsc --noEmit`.
+- [x] Run `npm.cmd run build`.
 - [ ] Manually test the complete flow locally with a fresh browser profile.
 - [ ] Test insufficient study time, custom topics, repeated quiz attempts, refresh, and reset.
 - [ ] Check the browser console for errors and failed network requests.
