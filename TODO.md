@@ -19,9 +19,11 @@ Current state: the local MVP changes are committed and synced with the remote fe
 ## Preview checkpoint — 2026-08-09
 
 - [x] Authenticated native.builder project workspace and preview were inspected.
-- [x] Preview exposed a real plan-to-quiz race: clicking `Start Quiz — Cell Biology` reached `/quiz` with no question controls until reload.
-- [x] Hardened the source implementation and pushed commit `583ac10` on `codex/icecold-sprint-core-workflow`.
-- [ ] Native.builder is not yet confirmed to contain commit `583ac10`; its rebuilt preview still reproduced the blank quiz state during verification.
+- [x] Preview exposed and then cleared a real plan-to-quiz race: clicking `Start Quiz — Cell Biology` now reaches the first question and answer controls without reload.
+- [x] Hardened the source implementation against persisted-setup and React StrictMode races; pushed commit `b7faf27` on `codex/icecold-sprint-core-workflow`.
+- [x] Builder preview reached question 5 with `5/5 answered`, `Correct: 5`, and the `Finish Quiz` control visible.
+- [ ] Native.builder is not yet confirmed to contain source commit `b7faf27`; Builder's internal one-file repair is not GitHub-synced.
+- [ ] Builder publish is blocked until its GitHub integration is connected.
 - [ ] Public deployment remains unverified and unchanged.
 
 ## P0 — Publish a working submission
