@@ -28,7 +28,9 @@ Current state: the local MVP changes are committed and synced with the remote fe
 - [x] Builder publish control reported success for `https://icecold-sprint.nativelyai.app`.
 - [ ] The named public URL still serves the old shell after publish.
 
-## P0 — Publish a working submission
+## P0 — Publish a working submission (release gate: 2/8 top-level items complete)
+
+Source readiness is complete. The remaining P0 release work requires the functional app to be served at the named public URL and verified in a fresh browser; those items cannot be closed from source code alone.
 
 - [ ] Confirm the exact hackathon submission deadline and required form fields.
 - [ ] Confirm that native.builder can sync this feature branch, or document the approved sync path.
