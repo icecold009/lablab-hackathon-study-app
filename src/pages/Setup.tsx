@@ -146,6 +146,8 @@ export default function Setup() {
     setSetup(sprintSetup);
     const plan = generatePlan(sprintSetup);
     setPlan(plan);
+    setQuizResults([]);
+    localStorage.removeItem('icecold-quiz-topic');
 
     // Navigate to plan page
     navigate('/plan');
@@ -177,6 +179,8 @@ export default function Setup() {
     setSetup(sprintSetup);
     const plan = generatePlan(sprintSetup);
     setPlan(plan);
+    setQuizResults([]);
+    localStorage.removeItem('icecold-quiz-topic');
 
     setTimeout(() => {
       setGenerating(false);

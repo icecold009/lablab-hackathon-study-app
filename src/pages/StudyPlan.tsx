@@ -6,7 +6,7 @@ import {
   Coffee, GraduationCap, PenTool, ArrowRight,
   TrendingUp, ListChecks,
 } from 'lucide-react';
-import type { SprintSetup, StudyPlan, TimeBlock } from '../types';
+import type { QuizResult, SprintSetup, StudyPlan, TimeBlock } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { generatePlan, formatTime, formatDuration, getPlanSummary } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
@@ -42,6 +42,7 @@ export default function StudyPlanPage() {
   const navigate = useNavigate();
   const [setup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
   const [plan, setPlan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
+  const [, setQuizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
   const [showRegenerate, setShowRegenerate] = useState(false);
 
   // Auto-generate plan when setup is ready but no plan exists yet
@@ -84,6 +85,8 @@ export default function StudyPlanPage() {
     if (!setup) return;
     const generated = generatePlan(setup);
     setPlan(generated);
+    setQuizResults([]);
+    localStorage.removeItem('icecold-quiz-topic');
     setShowRegenerate(false);
   };
 

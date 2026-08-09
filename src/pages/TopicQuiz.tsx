@@ -7,6 +7,7 @@ import {
 import type { QuizQuestion, QuizResult, StudyPlan, SprintSetup } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { generateTopicQuiz, checkAnswer } from '../utils/quizGenerator';
+import { getTopicPriorityScore } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -176,18 +177,13 @@ export default function TopicQuiz() {
 
   const handleContinueToNextTopic = () => {
     if (plan && setup) {
-      const confidenceNeed: Record<string, number> = { low: 3, medium: 2, high: 1 };
-      const importanceNeed: Record<string, number> = { high: 3, medium: 2, low: 1 };
-      const computeScore = (topic: typeof setup.topics[number]) =>
-        confidenceNeed[topic.confidence] * 2 + importanceNeed[topic.importance] * 3;
-
       const undones = plan.blocks
         .filter(b => !b.substantiallyCovered && b.topicId !== 'review-break')
         .sort((a, b) => {
           const aTopic = setup.topics.find(t => t.id === a.topicId);
           const bTopic = setup.topics.find(t => t.id === b.topicId);
           if (!aTopic || !bTopic) return 0;
-          return computeScore(bTopic) - computeScore(aTopic);
+          return getTopicPriorityScore(bTopic) - getTopicPriorityScore(aTopic);
         });
       if (undones.length > 0) {
         const next = undones[0];
