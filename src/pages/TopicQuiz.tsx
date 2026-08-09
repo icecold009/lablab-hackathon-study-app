@@ -17,6 +17,15 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 type Stage = 'select' | 'taking' | 'results';
 
+function readPersistedSetup(): SprintSetup | null {
+  try {
+    const item = localStorage.getItem('icecold-setup');
+    return item ? (JSON.parse(item) as SprintSetup) : null;
+  } catch {
+    return null;
+  }
+}
+
 /* ── Skeleton loader ────────────────────────────────────────── */
 function QuizSkeleton() {
   return (
@@ -49,7 +58,7 @@ export default function TopicQuiz() {
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const topics = useMemo(() => setup?.topics || [], [setup]);
+  const topics = useMemo(() => setup?.topics || readPersistedSetup()?.topics || [], [setup]);
 
   const handleSelectTopic = (topicId: string, topicName: string) => {
     setSelectedTopicId(topicId);
@@ -244,12 +253,13 @@ export default function TopicQuiz() {
     // When navigating from the plan, the route can mount before the setup
     // hook has hydrated its topic list. Keep the handoff marker until setup
     // is available instead of deleting it as an invalid topic.
-    if (!setup) return;
+    const persistedSetup = setup || readPersistedSetup();
+    if (!persistedSetup) return;
     const stored = localStorage.getItem('icecold-quiz-topic');
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored);
-      const topic = topics.find(t => t.id === parsed?.topicId);
+      const topic = persistedSetup.topics.find(t => t.id === parsed?.topicId);
       if (!topic) {
         localStorage.removeItem('icecold-quiz-topic');
         return;
