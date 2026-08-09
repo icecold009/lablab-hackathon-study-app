@@ -48,6 +48,17 @@ Current state: the local MVP changes are committed and synced with the remote fe
   - [ ] Reset and confirm the sprint returns to a clean state.
 - [x] Record the public URL, verification date, browser, and result in the evidence repository.
 
+### P0 source implementation gate
+
+- [x] Biology sample sprint and editable confidence/importance/study-time setup are implemented.
+- [x] Deterministic plan generation keeps scheduled time within the selected study budget.
+- [x] Recommended-topic quiz opens with exactly five questions and answer explanations.
+- [x] Score bands expose feedback and an adaptive next-topic/review action.
+- [x] Progress and quiz results persist through refresh using localStorage.
+- [x] Reset Sprint clears setup, plan, quiz results, and quiz handoff state.
+- [x] `npm.cmd run smoke` covers the complete source workflow, refresh persistence, and reset behavior.
+- [ ] Execute the smoke workflow against a fresh browser/public deployment; this remains external/runtime verification.
+
 ## P1 — Add one reliable AI capability
 
 - [ ] Add one visible AI-assisted behavior through native.builder, preferably explanation or post-quiz feedback.

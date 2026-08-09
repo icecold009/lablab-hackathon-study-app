@@ -14,6 +14,7 @@ try {
 
   await page.getByRole('button', { name: 'Try Sample Sprint' }).click();
   await page.getByRole('heading', { name: 'Study Plan' }).waitFor();
+  assert((await page.locator('main').innerText()).includes('6h'), 'Plan does not show the selected time budget');
   await page.getByRole('button', { name: 'Start Quiz — Cell Biology' }).click();
   await page.getByRole('heading', { name: 'Topic Quiz' }).waitFor();
   await page.getByText('Question 1 of 5').waitFor();
@@ -38,8 +39,19 @@ try {
   }
 
   await page.getByText(/of 5 correct/).waitFor();
+  await page.getByText(/Substantially Covered|Targeted Practice Needed|Review and Retry/).waitFor();
   await page.goto(`${baseUrl}/progress`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'Progress' }).waitFor();
+  await page.getByText('Cell Biology').waitFor();
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.getByText('Cell Biology').waitFor();
+
+  await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Reset Sprint' }).click();
+  await page.goto(`${baseUrl}/plan`, { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: 'No Plan Yet' }).waitFor();
+  await page.goto(`${baseUrl}/quiz`, { waitUntil: 'networkidle' });
+  await page.getByText('No topics yet').waitFor();
   console.log(`Smoke passed: ${baseUrl}`);
 } finally {
   await browser.close();
