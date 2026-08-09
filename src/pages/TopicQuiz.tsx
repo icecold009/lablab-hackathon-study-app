@@ -241,6 +241,10 @@ export default function TopicQuiz() {
   // by the first effect pass can be cancelled before the second pass runs.
   useEffect(() => {
     if (stage !== 'select') return;
+    // When navigating from the plan, the route can mount before the setup
+    // hook has hydrated its topic list. Keep the handoff marker until setup
+    // is available instead of deleting it as an invalid topic.
+    if (!setup) return;
     const stored = localStorage.getItem('icecold-quiz-topic');
     if (!stored) return;
     try {
@@ -266,7 +270,7 @@ export default function TopicQuiz() {
       localStorage.removeItem('icecold-quiz-topic');
       /* invalid JSON — ignore */
     }
-  }, [stage, topics]);
+  }, [stage, setup, topics]);
 
   const totalQ = questions.length || 5;
   const pct = totalQ > 0 ? Math.round((quizScore / totalQ) * 100) : 0;
