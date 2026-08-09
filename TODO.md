@@ -13,8 +13,9 @@ Current state: the local MVP changes are committed and synced with the remote fe
 - [x] Cleared stale quiz-topic navigation state when starting or regenerating a sprint.
 - [x] Reused the shared topic-priority scorer for next-topic recommendations.
 - [x] Preserved the plan-to-quiz handoff marker until persisted setup hydration is available, with a localStorage fallback for the topic lookup.
+- [x] Made fallback quiz question and option ordering deterministic per topic.
 - [x] Expanded the source-repository README with the workflow and local commands.
-- [x] Confirmed `npm.cmd run check` passes locally after commit `583ac10`.
+- [x] Confirmed `npm.cmd run check` passes locally after the current feature checkpoint.
 
 ## Preview checkpoint — 2026-08-09
 
