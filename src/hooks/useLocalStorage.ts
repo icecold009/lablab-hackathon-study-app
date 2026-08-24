@@ -6,6 +6,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
       const item = window.localStorage.getItem(key);
       return item ? (JSON.parse(item) as T) : initialValue;
     } catch {
+      window.dispatchEvent(new CustomEvent('icecold:storage-error', { detail: { key } }));
       return initialValue;
     }
   });
@@ -17,7 +18,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
         try {
           window.localStorage.setItem(key, JSON.stringify(nextValue));
         } catch {
-          // quota exceeded or other storage error — silently fail
+          window.dispatchEvent(new CustomEvent('icecold:storage-error', { detail: { key } }));
         }
         return nextValue;
       });

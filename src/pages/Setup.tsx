@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles, Plus, Trash2, Clock, Brain, Snowflake,
-  AlertCircle, Coffee, Zap, Shield, Star, Rocket,
+  AlertCircle, Coffee, Zap, Shield, Star, Rocket, RotateCcw,
 } from 'lucide-react';
-import type { SprintSetup, StudyPlan, TopicSetup, Confidence, Importance } from '../types';
+import type { SprintSetup, StudyPlan, QuizResult, TopicSetup, Confidence, Importance } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { getSampleSetup } from '../data/sampleData';
 import { generatePlan } from '../utils/planGenerator';
@@ -68,6 +68,7 @@ export default function Setup() {
   const navigate = useNavigate();
   const [setup, setSetup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
   const [, setPlan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
+  const [, setQuizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
 
   const [examName, setExamName] = useState(setup?.examName || '');
   const [examHours, setExamHours] = useState(setup?.examHours || 48);
@@ -145,6 +146,8 @@ export default function Setup() {
     setSetup(sprintSetup);
     const plan = generatePlan(sprintSetup);
     setPlan(plan);
+    setQuizResults([]);
+    localStorage.removeItem('icecold-quiz-topic');
 
     // Navigate to plan page
     navigate('/plan');
@@ -176,11 +179,26 @@ export default function Setup() {
     setSetup(sprintSetup);
     const plan = generatePlan(sprintSetup);
     setPlan(plan);
+    setQuizResults([]);
+    localStorage.removeItem('icecold-quiz-topic');
 
     setTimeout(() => {
       setGenerating(false);
       navigate('/plan');
     }, 600);
+  };
+
+  const handleReset = () => {
+    setSetup(null);
+    setPlan(null);
+    setQuizResults([]);
+    localStorage.removeItem('icecold-quiz-topic');
+    setExamName('');
+    setExamHours(48);
+    setStudyHours(10);
+    setTopics([]);
+    setNewTopicName('');
+    setErrors({});
   };
 
   const reviewReservePct = topics.length > 0 ? 15 : 0;
@@ -431,6 +449,18 @@ export default function Setup() {
               </>
             )}
           </Button>
+
+          {(setup || topics.length > 0) && (
+            <Button
+              onClick={handleReset}
+              variant="danger"
+              size="sm"
+              className="w-full mt-2"
+              icon={<RotateCcw size={14} />}
+            >
+              Reset Sprint
+            </Button>
+          )}
         </section>
       </div>
     </div>

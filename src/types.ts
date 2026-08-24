@@ -39,6 +39,13 @@ export interface StudyPlan {
   generatedAt: string;
 }
 
+export interface TimerState {
+  blockId: string;
+  remainingSeconds: number;
+  running: boolean;
+  updatedAt: number;
+}
+
 export interface QuizQuestion {
   id: string;
   type: QuestionType;

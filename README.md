@@ -56,4 +56,3 @@ scripts/smoke.mjs        Lightweight workflow smoke check
 - Implementation source: this repository.
 - Evidence and submission notes: the separate `icecold-sprint-docs` repository.
 - Work on a feature branch and keep `main` unchanged until the workflow has been reviewed.
-

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, ArrowLeft, ArrowRight, CheckCircle2, XCircle, Send,
@@ -7,6 +7,7 @@ import {
 import type { QuizQuestion, QuizResult, StudyPlan, SprintSetup } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { generateTopicQuiz, checkAnswer } from '../utils/quizGenerator';
+import { getTopicPriorityScore } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -15,6 +16,15 @@ import EmptyState from '../components/ui/EmptyState';
 import { Skeleton } from '../components/ui/Skeleton';
 
 type Stage = 'select' | 'taking' | 'results';
+
+function readPersistedSetup(): SprintSetup | null {
+  try {
+    const item = localStorage.getItem('icecold-setup');
+    return item ? (JSON.parse(item) as SprintSetup) : null;
+  } catch {
+    return null;
+  }
+}
 
 /* ── Skeleton loader ────────────────────────────────────────── */
 function QuizSkeleton() {
@@ -47,8 +57,9 @@ export default function TopicQuiz() {
   const [submittedQuestions, setSubmittedQuestions] = useState<QuizQuestion[]>([]);
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(false);
+  const autoStartHandledRef = useRef(false);
 
-  const topics = useMemo(() => setup?.topics || [], [setup]);
+  const topics = useMemo(() => setup?.topics || readPersistedSetup()?.topics || [], [setup]);
 
   const handleSelectTopic = (topicId: string, topicName: string) => {
     setSelectedTopicId(topicId);
@@ -176,26 +187,17 @@ export default function TopicQuiz() {
 
   const handleContinueToNextTopic = () => {
     if (plan && setup) {
-      const confidenceNeed: Record<string, number> = { low: 3, medium: 2, high: 1 };
-      const importanceNeed: Record<string, number> = { high: 3, medium: 2, low: 1 };
-      const computeScore = (topic: typeof setup.topics[number]) =>
-        confidenceNeed[topic.confidence] * 2 + importanceNeed[topic.importance] * 3;
-
       const undones = plan.blocks
         .filter(b => !b.substantiallyCovered && b.topicId !== 'review-break')
         .sort((a, b) => {
           const aTopic = setup.topics.find(t => t.id === a.topicId);
           const bTopic = setup.topics.find(t => t.id === b.topicId);
           if (!aTopic || !bTopic) return 0;
-          return computeScore(bTopic) - computeScore(aTopic);
+          return getTopicPriorityScore(bTopic) - getTopicPriorityScore(aTopic);
         });
       if (undones.length > 0) {
         const next = undones[0];
-        localStorage.setItem('icecold-quiz-topic', JSON.stringify({
-          topicId: next.topicId,
-          topicName: next.topicName,
-        }));
-        navigate('/quiz');
+        handleSelectTopic(next.topicId, next.topicName);
         return;
       }
     }
@@ -244,36 +246,45 @@ export default function TopicQuiz() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stage, loading, questions, currentQ, answers, showExplanation, submittedQuestions, handlePrev, handleNext, submitAnswer, finishQuiz, handleAnswer]);
 
-  // Auto-start if preselected (via "Next Topic" from quiz results)
+  // Auto-start if preselected (via a plan card or the quiz results).
+  // Keep this synchronous: under React StrictMode an async timer scheduled
+  // by the first effect pass can be cancelled before the second pass runs.
   useEffect(() => {
     if (stage !== 'select') return;
+    // When navigating from the plan, the route can mount before the setup
+    // hook has hydrated its topic list. Keep the handoff marker until setup
+    // is available instead of deleting it as an invalid topic.
+    const persistedSetup = setup || readPersistedSetup();
+    if (!persistedSetup) return;
     const stored = localStorage.getItem('icecold-quiz-topic');
     if (!stored) return;
-    localStorage.removeItem('icecold-quiz-topic');
+    if (autoStartHandledRef.current) return;
     try {
       const parsed = JSON.parse(stored);
-      const topic = topics.find(t => t.id === parsed?.topicId);
-      if (!topic) return;
+      const topic = persistedSetup.topics.find(t => t.id === parsed?.topicId);
+      if (!topic) {
+        localStorage.removeItem('icecold-quiz-topic');
+        return;
+      }
+
+      // Keep the marker through StrictMode's effect replay. Removing it
+      // before the second pass can leave the route mounted with no quiz.
+      autoStartHandledRef.current = true;
       setSelectedTopicId(topic.id);
       setSelectedTopicName(topic.name);
-      setLoading(true);
-      const timer = setTimeout(() => {
-        const qs = generateTopicQuiz(topic.name, 5);
-        setQuestions(qs);
-        setAnswers({});
-        setCurrentQ(0);
-        setShowExplanation(false);
-        setQuizScore(0);
-        setSubmittedQuestions([]);
-        setFinished(false);
-        setStage('taking');
-        setLoading(false);
-      }, 400);
-      return () => clearTimeout(timer);
+      setQuestions(generateTopicQuiz(topic.name, 5));
+      setAnswers({});
+      setCurrentQ(0);
+      setShowExplanation(false);
+      setQuizScore(0);
+      setSubmittedQuestions([]);
+      setFinished(false);
+      setStage('taking');
     } catch {
+      localStorage.removeItem('icecold-quiz-topic');
       /* invalid JSON — ignore */
     }
-  }, [stage, topics]);
+  }, [stage, setup, topics]);
 
   const totalQ = questions.length || 5;
   const pct = totalQ > 0 ? Math.round((quizScore / totalQ) * 100) : 0;

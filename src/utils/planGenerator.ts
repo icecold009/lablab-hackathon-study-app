@@ -44,9 +44,13 @@ function pickActivity(confidence: string, index: number): ActivityEntry {
 
 /* ── Priority helpers ─────────────────────────────────────── */
 
-function computeScore(topic: SprintSetup['topics'][number]): number {
+export function getTopicPriorityScore(topic: SprintSetup['topics'][number]): number {
   // Low confidence + high importance = highest priority
   return confidenceNeed[topic.confidence] * 2 + importanceNeed[topic.importance] * 3;
+}
+
+function computeScore(topic: SprintSetup['topics'][number]): number {
+  return getTopicPriorityScore(topic);
 }
 
 function pickPriorityLabel(confidence: string, importance: string): string {
@@ -79,27 +83,53 @@ function pickPriorityReason(topic: SprintSetup['topics'][number]): string {
 export function generatePlan(setup: SprintSetup): StudyPlan {
   const { topics, studyHours } = setup;
 
-  // Clamp study hours to a sane minimum
-  const effectiveHours = Math.max(1, studyHours);
+  // Work in half-hour units so rounding can never make the final schedule
+  // exceed the user's available time.
+  const effectiveHours = Math.max(1, Math.floor(studyHours * 2) / 2);
+  const totalUnits = Math.max(2, Math.floor(effectiveHours * 2));
+  const requestedReserveUnits = Math.max(1, Math.round(effectiveHours * 0.15 * 2));
+  const minimumUnitsForTopics = Math.min(topics.length, totalUnits);
+  const reviewReserveUnits = topics.length > 0
+    ? Math.min(requestedReserveUnits, Math.max(0, totalUnits - minimumUnitsForTopics))
+    : 0;
+  const studyUnits = totalUnits - reviewReserveUnits;
 
-  // Reserve ~15% for review and breaks, but ensure at least 30 min of real study per topic
-  const reviewReserve = Math.round(effectiveHours * 0.15 * 2) / 2; // round to nearest 0.5
-  const studyPool = Math.max(topics.length * 0.5, effectiveHours - reviewReserve);
+  // Score and sort topics. If there is not enough time for every topic, keep
+  // the highest-priority topics and leave the rest for a later sprint.
+  const scored = topics
+    .map((topic, index) => ({ topic, score: computeScore(topic), index }))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const scheduled = scored.slice(0, Math.min(scored.length, studyUnits));
+  const totalScore = scheduled.reduce((sum, item) => sum + item.score, 0);
 
-  // Score and sort topics
-  const scored = topics.map(t => ({ topic: t, score: computeScore(t) }));
-  const totalScore = scored.reduce((s, x) => s + x.score, 0);
+  // Give every scheduled topic 30 minutes, then distribute the remaining
+  // half-hours by priority using largest remainders for deterministic output.
+  const durationUnits = new Map<string, number>();
+  scheduled.forEach(item => durationUnits.set(item.topic.id, 1));
+  let remainingUnits = Math.max(0, studyUnits - scheduled.length);
+  const weighted = scheduled.map(item => {
+    const raw = totalScore > 0 ? (remainingUnits * item.score) / totalScore : remainingUnits / Math.max(1, scheduled.length);
+    const whole = Math.floor(raw);
+    return { ...item, whole, remainder: raw - whole };
+  });
+  weighted.forEach(item => {
+    durationUnits.set(item.topic.id, (durationUnits.get(item.topic.id) ?? 1) + item.whole);
+    remainingUnits -= item.whole;
+  });
+  weighted
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
+    .slice(0, remainingUnits)
+    .forEach(item => {
+      durationUnits.set(item.topic.id, (durationUnits.get(item.topic.id) ?? 1) + 1);
+    });
 
-  // Allocate time proportionally by score (higher score = more time)
-  const blocks: TimeBlock[] = scored.map((s, i) => {
-    const rawHours = totalScore > 0 ? (s.score / totalScore) * studyPool : studyPool / topics.length;
-    const duration = Math.max(0.5, Math.round(rawHours * 2) / 2);
+  const blocks: TimeBlock[] = scheduled.map((s, i) => {
     const activity = pickActivity(s.topic.confidence, i);
     return {
       id: `block-${i}`,
       topicId: s.topic.id,
       topicName: s.topic.name,
-      duration,
+      duration: (durationUnits.get(s.topic.id) ?? 1) / 2,
       startHour: 0,
       priority: pickPriorityLabel(s.topic.confidence, s.topic.importance),
       priorityReason: pickPriorityReason(s.topic),
@@ -107,13 +137,6 @@ export function generatePlan(setup: SprintSetup): StudyPlan {
       activityLabel: activity.label,
       done: false,
     };
-  });
-
-  // Sort: highest score first
-  blocks.sort((a, b) => {
-    const aTopic = topics.find(t => t.id === a.topicId)!;
-    const bTopic = topics.find(t => t.id === b.topicId)!;
-    return computeScore(bTopic) - computeScore(aTopic);
   });
 
   // Recalculate start hours chronologically
@@ -124,7 +147,8 @@ export function generatePlan(setup: SprintSetup): StudyPlan {
   }
 
   // Add a review/break block at the end if reserve is meaningful
-  if (reviewReserve >= 0.5 && blocks.length > 0) {
+  const reviewReserve = reviewReserveUnits / 2;
+  if (reviewReserve > 0 && blocks.length > 0) {
     blocks.push({
       id: 'block-review-break',
       topicId: 'review-break',
@@ -171,7 +195,7 @@ export function getPlanSummary(plan: StudyPlan) {
   const blocks = plan.blocks.filter(b => b.topicId !== 'review-break');
   const totalTopics = blocks.length;
   const totalStudyHours = blocks.reduce((s, b) => s + b.duration, 0);
-  const highestPriorityBlock = blocks[0] ?? null;
+  const highestPriorityBlock = blocks.find(block => !block.substantiallyCovered) ?? blocks[0] ?? null;
   const doneBlocks = plan.blocks.filter(b => b.done).length;
   const completionPct = plan.blocks.length > 0
     ? Math.round((doneBlocks / plan.blocks.length) * 100)
