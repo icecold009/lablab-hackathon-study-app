@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { FlaskConical, CalendarCheck, Brain, TrendingUp, Snowflake } from 'lucide-react';
 
@@ -14,7 +15,7 @@ function NavLinkItem({ to, label, icon: Icon }: { to: string; label: string; ico
       to={to}
       end={to === '/'}
       className={({ isActive }) =>
-        `flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+        `flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 ${
           isActive
             ? 'bg-primary/15 text-primary-light shadow-sm'
             : 'text-muted hover:bg-hover hover:text-foreground'
@@ -28,6 +29,14 @@ function NavLinkItem({ to, label, icon: Icon }: { to: string; label: string; ico
 }
 
 export default function Layout() {
+  const [storageError, setStorageError] = useState(false);
+
+  useEffect(() => {
+    const handleStorageError = () => setStorageError(true);
+    window.addEventListener('icecold:storage-error', handleStorageError);
+    return () => window.removeEventListener('icecold:storage-error', handleStorageError);
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-bg">
       {/* Top Navigation Bar */}
@@ -52,6 +61,12 @@ export default function Layout() {
       {/* Main Content Area */}
       <main className="flex-1 pt-14 pb-20 md:pb-8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-8">
+          {storageError && (
+            <div role="status" aria-live="polite" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning">
+              <span><strong>Browser storage is unavailable.</strong> Progress may not survive a refresh.</span>
+              <button type="button" className="font-semibold underline underline-offset-2" onClick={() => setStorageError(false)}>Dismiss</button>
+            </div>
+          )}
           <Outlet />
         </div>
       </main>
@@ -65,7 +80,7 @@ export default function Layout() {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all duration-150 min-w-0 ${
+                `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-md text-[10px] font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 min-w-0 ${
                   isActive
                     ? 'text-primary-light'
                     : 'text-muted'
