@@ -6,7 +6,7 @@ import {
   Coffee, GraduationCap, PenTool, ArrowRight,
   TrendingUp, ListChecks,
 } from 'lucide-react';
-import type { QuizResult, SprintSetup, StudyPlan, TimeBlock } from '../types';
+import type { QuizResult, SprintSetup, StudyPlan, TimeBlock, TimerState } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { generatePlan, formatTime, formatDuration, getPlanSummary } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
@@ -43,7 +43,21 @@ export default function StudyPlanPage() {
   const [setup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
   const [plan, setPlan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
   const [, setQuizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
+  const [timer, setTimer] = useLocalStorage<TimerState | null>('icecold-active-timer', null);
   const [showRegenerate, setShowRegenerate] = useState(false);
+
+  useEffect(() => {
+    if (!timer?.running) return;
+    const interval = window.setInterval(() => {
+      setTimer((current) => {
+        if (!current?.running) return current;
+        const elapsed = Math.max(1, Math.floor((Date.now() - current.updatedAt) / 1000));
+        const remainingSeconds = Math.max(0, current.remainingSeconds - elapsed);
+        return { ...current, remainingSeconds, running: remainingSeconds > 0, updatedAt: Date.now() };
+      });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [setTimer, timer?.running]);
 
   // Auto-generate plan when setup is ready but no plan exists yet
   useEffect(() => {
@@ -74,11 +88,24 @@ export default function StudyPlanPage() {
   };
 
   const handleStartQuiz = (block: TimeBlock) => {
-    localStorage.setItem('icecold-quiz-topic', JSON.stringify({
-      topicId: block.topicId,
-      topicName: block.topicName,
-    }));
+    try {
+      localStorage.setItem('icecold-quiz-topic', JSON.stringify({
+        topicId: block.topicId,
+        topicName: block.topicName,
+      }));
+    } catch {
+      window.dispatchEvent(new CustomEvent('icecold:storage-error', { detail: { key: 'icecold-quiz-topic' } }));
+      return;
+    }
     navigate('/quiz');
+  };
+
+  const toggleTimer = (block: TimeBlock) => {
+    if (timer?.blockId === block.id) {
+      setTimer({ ...timer, running: !timer.running, updatedAt: Date.now() });
+      return;
+    }
+    setTimer({ blockId: block.id, remainingSeconds: Math.max(60, Math.round(block.duration * 3600)), running: true, updatedAt: Date.now() });
   };
 
   const handleRegenerate = () => {
@@ -86,7 +113,12 @@ export default function StudyPlanPage() {
     const generated = generatePlan(setup);
     setPlan(generated);
     setQuizResults([]);
-    localStorage.removeItem('icecold-quiz-topic');
+    setTimer(null);
+    try {
+      localStorage.removeItem('icecold-quiz-topic');
+    } catch {
+      window.dispatchEvent(new CustomEvent('icecold:storage-error', { detail: { key: 'icecold-quiz-topic' } }));
+    }
     setShowRegenerate(false);
   };
 
@@ -220,6 +252,8 @@ export default function StudyPlanPage() {
               index={index}
               onToggle={() => toggleBlock(block.id)}
               onStartQuiz={() => handleStartQuiz(block)}
+              timer={timer?.blockId === block.id ? timer : null}
+              onToggleTimer={() => toggleTimer(block)}
             />
           );
         })}
@@ -241,12 +275,16 @@ function TimeBlockCard({
   index,
   onToggle,
   onStartQuiz,
+  timer,
+  onToggleTimer,
 }: {
   block: TimeBlock;
   blockState: BlockState;
   index: number;
   onToggle: () => void;
   onStartQuiz: () => void;
+  timer: TimerState | null;
+  onToggleTimer: () => void;
 }) {
   const isDone = blockState === 'done';
   const isCurrent = blockState === 'current';
@@ -324,19 +362,24 @@ function TimeBlockCard({
         </div>
 
         {!isReview && (
-          <Button
-            onClick={(e) => { e.stopPropagation(); onStartQuiz(); }}
-            variant={isCurrent ? 'primary' : 'secondary'}
-            size="sm"
-            className="w-full"
-            icon={<Brain size={14} />}
-          >
-            {isCovered
-              ? `Score: ${block.quizScore}% · Retake Quiz`
-              : block.quizScore !== undefined
-              ? `Score: ${block.quizScore}% · Retake Quiz`
-              : `Start Quiz — ${block.topicName}`}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={(e) => { e.stopPropagation(); onToggleTimer(); }} variant={timer?.running ? 'danger' : 'ghost'} size="sm" className="min-w-28" icon={<Timer size={14} />}>
+              {timer?.remainingSeconds === 0 ? 'Time complete' : timer?.running ? 'Pause timer' : timer ? 'Resume timer' : 'Start timer'}
+            </Button>
+            <Button
+              onClick={(e) => { e.stopPropagation(); onStartQuiz(); }}
+              variant={isCurrent ? 'primary' : 'secondary'}
+              size="sm"
+              className="flex-1"
+              icon={<Brain size={14} />}
+            >
+              {isCovered
+                ? `Score: ${block.quizScore}% · Retake Quiz`
+                : block.quizScore !== undefined
+                ? `Score: ${block.quizScore}% · Retake Quiz`
+                : `Start Quiz — ${block.topicName}`}
+            </Button>
+          </div>
         )}
       </div>
     </div>
