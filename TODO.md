@@ -71,4 +71,3 @@ Stored values are unversioned per-key JSON, so incompatible shapes have no migra
 - [ ] Browser smoke passes with the pinned Playwright browser.
 - [ ] Local/deterministic/offline/hosted claims remain honest.
 - [ ] Feature branch is pushed and clean; `main` is untouched and unmerged.
-
