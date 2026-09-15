@@ -7,7 +7,7 @@ import {
 } from './browserStore'
 import { STORAGE_KEYS } from './schema'
 import { MemoryStorage } from '../test/fakes'
-import { createPlan, createQuizResult, createSetup } from '../test/fixtures'
+import { createPlan, createQuestion, createQuizResult, createSetup } from '../test/fixtures'
 
 describe('browser storage adapter', () => {
   it('reads a current envelope and preserves its metadata', () => {
@@ -52,6 +52,19 @@ describe('browser storage adapter', () => {
         fallback: null,
       },
       { key: STORAGE_KEYS.quizTopic, value: { topicId: 'topic-cell-biology', topicName: 'Cell Biology' }, fallback: null },
+      {
+        key: STORAGE_KEYS.activeQuiz,
+        value: {
+          topicId: 'topic-cell-biology',
+          topicName: 'Cell Biology',
+          questions: [createQuestion()],
+          currentQuestionIndex: 0,
+          answers: {},
+          submittedQuestions: [],
+          showExplanation: false,
+        },
+        fallback: null,
+      },
     ] as const
 
     for (const record of records) {

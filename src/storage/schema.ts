@@ -7,6 +7,7 @@ import type {
   TimeBlock,
   TopicSetup,
 } from '../types'
+import type { QuizSession } from '../quiz/reducer'
 
 export const STORAGE_VERSION = 1 as const
 
@@ -16,6 +17,7 @@ export const STORAGE_KEYS = {
   quizResults: 'icecold-quiz-results',
   activeTimer: 'icecold-active-timer',
   quizTopic: 'icecold-quiz-topic',
+  activeQuiz: 'icecold-active-quiz',
 } as const
 
 export interface QuizTopicSelection {
@@ -142,6 +144,24 @@ function isQuizResult(value: unknown): value is QuizResult {
     && typeof value.completedAt === 'string'
 }
 
+function isQuizSession(value: unknown): value is QuizSession {
+  return isRecord(value)
+    && typeof value.topicId === 'string'
+    && typeof value.topicName === 'string'
+    && Array.isArray(value.questions)
+    && value.questions.length > 0
+    && value.questions.every(isQuizQuestion)
+    && typeof value.currentQuestionIndex === 'number'
+    && Number.isInteger(value.currentQuestionIndex)
+    && value.currentQuestionIndex >= 0
+    && value.currentQuestionIndex < value.questions.length
+    && isRecord(value.answers)
+    && Object.values(value.answers).every(answer => typeof answer === 'string')
+    && Array.isArray(value.submittedQuestions)
+    && value.submittedQuestions.every(isQuizQuestion)
+    && typeof value.showExplanation === 'boolean'
+}
+
 function isTimerState(value: unknown): value is TimerState {
   return isRecord(value)
     && typeof value.blockId === 'string'
@@ -175,6 +195,8 @@ export function getStorageValidator(key: string): StorageValidator | undefined {
       return nullable(isTimerState)
     case STORAGE_KEYS.quizTopic:
       return nullable(isQuizTopicSelection)
+    case STORAGE_KEYS.activeQuiz:
+      return nullable(isQuizSession)
     default:
       return undefined
   }

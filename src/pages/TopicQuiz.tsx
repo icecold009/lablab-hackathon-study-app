@@ -1,23 +1,23 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, ArrowLeft, ArrowRight, CheckCircle2, XCircle, Send,
   Lightbulb, Snowflake, Target, BookOpen, Award, Sparkles,
 } from 'lucide-react';
-import type { QuizQuestion, QuizResult, StudyPlan, SprintSetup } from '../types';
+import type { QuizResult, StudyPlan, SprintSetup } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { clearStoredValue, readStoredValue } from '../storage/browserStore';
 import { STORAGE_KEYS, type QuizTopicSelection } from '../storage/schema';
-import { generateTopicQuiz, checkAnswer } from '../utils/quizGenerator';
 import { getTopicPriorityScore } from '../utils/planGenerator';
+import { useQuizController } from '../quiz/controller';
+import { sampleQuizProvider } from '../quiz/provider';
+import type { QuizSession } from '../quiz/reducer';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { Skeleton } from '../components/ui/Skeleton';
-
-type Stage = 'select' | 'taking' | 'results';
 
 function readPersistedSetup(): SprintSetup | null {
   return readStoredValue<SprintSetup | null>(STORAGE_KEYS.setup, null).value;
@@ -42,140 +42,61 @@ export default function TopicQuiz() {
   const [plan, setPlan] = useLocalStorage<StudyPlan | null>(STORAGE_KEYS.plan, null);
   const [setup] = useLocalStorage<SprintSetup | null>(STORAGE_KEYS.setup, null);
   const [, setQuizResults] = useLocalStorage<QuizResult[]>(STORAGE_KEYS.quizResults, []);
-
-  const [stage, setStage] = useState<Stage>('select');
-  const [selectedTopicId, setSelectedTopicId] = useState<string>('');
-  const [selectedTopicName, setSelectedTopicName] = useState<string>('');
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [showExplanation, setShowExplanation] = useState(false);
-  const [quizScore, setQuizScore] = useState(0);
-  const [submittedQuestions, setSubmittedQuestions] = useState<QuizQuestion[]>([]);
-  const [finished, setFinished] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [activeQuiz, setActiveQuiz] = useLocalStorage<QuizSession | null>(STORAGE_KEYS.activeQuiz, null);
   const autoStartHandledRef = useRef(false);
 
-  const topics = useMemo(() => setup?.topics || readPersistedSetup()?.topics || [], [setup]);
+  const {
+    model,
+    selectTopic: handleSelectTopic,
+    retry: handleRetry,
+    answer: handleAnswer,
+    submit: submitAnswer,
+    next: handleNext,
+    previous: handlePrev,
+    jump: handleJump,
+    finish: finishQuiz,
+    backToSelect: controllerBackToSelect,
+  } = useQuizController({
+    initialSession: activeQuiz,
+    provider: sampleQuizProvider,
+    onSessionChange: setActiveQuiz,
+    onResult: result => setQuizResults(previous => [...previous, result]),
+    onProgress: ({ topicId, scorePct }) => {
+      setPlan(previous => previous
+        ? {
+            ...previous,
+            blocks: previous.blocks.map(block => block.topicId === topicId
+              ? {
+                  ...block,
+                  quizScore: scorePct,
+                  done: true,
+                  substantiallyCovered: scorePct >= 80,
+                }
+              : block),
+          }
+        : previous)
+    },
+  });
 
-  const handleSelectTopic = (topicId: string, topicName: string) => {
-    setSelectedTopicId(topicId);
-    setSelectedTopicName(topicName);
-    setLoading(true);
-    setTimeout(() => {
-      const qs = generateTopicQuiz(topicName, 5);
-      setQuestions(qs);
-      setAnswers({});
-      setCurrentQ(0);
-      setShowExplanation(false);
-      setQuizScore(0);
-      setSubmittedQuestions([]);
-      setFinished(false);
-      setStage('taking');
-      setLoading(false);
-    }, 400);
-  };
-
-  const handleAnswer = (questionId: string, answer: string) => {
-    if (finished) return;
-    setAnswers(prev => ({ ...prev, [questionId]: answer }));
-    if (showExplanation && answers[questionId] !== answer) {
-      setShowExplanation(false);
-    }
-  };
-
-  const submitAnswer = useCallback(() => {
-    const q = questions[currentQ];
-    if (!q) return;
-    const userAnswer = answers[q.id];
-    if (!userAnswer?.trim()) return;
-
-    const isCorrect = checkAnswer(q, userAnswer);
-    q.userAnswer = userAnswer;
-    q.isCorrect = isCorrect;
-
-    setSubmittedQuestions(prev => {
-      const filtered = prev.filter(pq => pq.id !== q.id);
-      return [...filtered, q];
-    });
-    if (isCorrect) setQuizScore(prev => prev + 1);
-    setShowExplanation(true);
-  }, [questions, currentQ, answers]);
-
-  const handleNext = useCallback(() => {
-    if (currentQ < questions.length - 1) {
-      setCurrentQ(prev => prev + 1);
-      setShowExplanation(false);
-    }
-  }, [currentQ, questions.length]);
-
-  const handlePrev = useCallback(() => {
-    if (currentQ > 0) setCurrentQ(prev => prev - 1);
-  }, [currentQ]);
-
-  const finishQuiz = () => {
-    const finalQuestions = questions.map(q => {
-      const found = submittedQuestions.find(sq => sq.id === q.id);
-      return found || { ...q, userAnswer: '', isCorrect: false };
-    });
-
-    const totalScore = finalQuestions.filter(q => q.isCorrect).length;
-    const scorePct = Math.round((totalScore / finalQuestions.length) * 100);
-
-    const result: QuizResult = {
-      topicId: selectedTopicId,
-      topicName: selectedTopicName,
-      questions: finalQuestions,
-      score: totalScore,
-      total: finalQuestions.length,
-      completedAt: new Date().toISOString(),
-    };
-    setQuizResults(prev => [...prev, result]);
-
-    if (plan) {
-      setPlan({
-        ...plan,
-        blocks: plan.blocks.map(b =>
-          b.topicId === selectedTopicId
-            ? {
-                ...b,
-                quizScore: scorePct,
-                done: true,
-                substantiallyCovered: scorePct >= 80,
-              }
-            : b
-        ),
-      });
-    }
-
-    setFinished(true);
-    setStage('results');
-  };
-
-  const handleRetry = () => {
-    setLoading(true);
-    setTimeout(() => {
-      const qs = generateTopicQuiz(selectedTopicName, 5);
-      setQuestions(qs);
-      setAnswers({});
-      setCurrentQ(0);
-      setShowExplanation(false);
-      setQuizScore(0);
-      setSubmittedQuestions([]);
-      setFinished(false);
-      setStage('taking');
-      setLoading(false);
-    }, 400);
-  };
+  const {
+    stage,
+    topicName: selectedTopicName,
+    questions,
+    currentQuestionIndex: currentQ,
+    answers,
+    showExplanation,
+    submittedQuestions,
+    loading,
+    error,
+  } = model;
+  const quizScore = model.score;
 
   const handleBackToSelect = () => {
-    setStage('select');
-    setSelectedTopicId('');
-    setSelectedTopicName('');
-    setQuestions([]);
-    setFinished(false);
+    controllerBackToSelect();
     clearStoredValue(STORAGE_KEYS.quizTopic);
   };
+
+  const topics = useMemo(() => setup?.topics || readPersistedSetup()?.topics || [], [setup]);
 
   const handleBackToPlan = () => {
     clearStoredValue(STORAGE_KEYS.quizTopic);
@@ -243,11 +164,9 @@ export default function TopicQuiz() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stage, loading, questions, currentQ, answers, showExplanation, submittedQuestions, handlePrev, handleNext, submitAnswer, finishQuiz, handleAnswer]);
 
-  // Auto-start if preselected (via a plan card or the quiz results).
-  // Keep this synchronous: under React StrictMode an async timer scheduled
-  // by the first effect pass can be cancelled before the second pass runs.
+  // Auto-start if preselected via a plan card or the quiz results.
   useEffect(() => {
-    if (stage !== 'select') return;
+    if (stage !== 'select' || loading) return;
     // When navigating from the plan, the route can mount before the setup
     // hook has hydrated its topic list. Keep the handoff marker until setup
     // is available instead of deleting it as an invalid topic.
@@ -262,20 +181,9 @@ export default function TopicQuiz() {
       return;
     }
 
-    // Keep the marker through StrictMode's effect replay. Removing it
-    // before the second pass can leave the route mounted with no quiz.
     autoStartHandledRef.current = true;
-    setSelectedTopicId(topic.id);
-    setSelectedTopicName(topic.name);
-    setQuestions(generateTopicQuiz(topic.name, 5));
-    setAnswers({});
-    setCurrentQ(0);
-    setShowExplanation(false);
-    setQuizScore(0);
-    setSubmittedQuestions([]);
-    setFinished(false);
-    setStage('taking');
-  }, [stage, setup, topics]);
+    handleSelectTopic(topic.id, topic.name);
+  }, [handleSelectTopic, loading, setup, stage]);
 
   const totalQ = questions.length || 5;
   const pct = totalQ > 0 ? Math.round((quizScore / totalQ) * 100) : 0;
@@ -336,6 +244,14 @@ export default function TopicQuiz() {
       {/* Stage: Select */}
       {stage === 'select' && (
         <div>
+          {error && !loading && (
+            <div role="alert" className="bg-danger/10 border border-danger/30 rounded-xl p-4 mb-4">
+              <p className="text-sm text-danger mb-2">{error}</p>
+              <Button variant="danger" size="sm" onClick={handleRetry}>
+                Retry
+              </Button>
+            </div>
+          )}
           {loading && <QuizSkeleton />}
           {!loading && topics.length === 0 && (
             <EmptyState
@@ -539,7 +455,7 @@ export default function TopicQuiz() {
                   {questions.map((q, qi) => (
                     <button
                       key={q.id}
-                      onClick={() => { setCurrentQ(qi); setShowExplanation(!!submittedQuestions.find(sq => sq.id === q.id)); }}
+                      onClick={() => handleJump(qi)}
                       className={`w-7 h-7 rounded-full text-[11px] font-medium transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 ${
                         qi === currentQ ? 'bg-primary text-bg' :
                         submittedQuestions.find(sq => sq.id === q.id)?.isCorrect ? 'bg-success/20 text-success' :
