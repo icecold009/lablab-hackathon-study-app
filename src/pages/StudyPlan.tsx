@@ -10,6 +10,7 @@ import type { QuizResult, SprintSetup, StudyPlan, TimeBlock, TimerState } from '
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { clearStoredValue, persistStoredValue } from '../storage/browserStore';
 import { STORAGE_KEYS } from '../storage/schema';
+import { useTimer } from '../timer/useTimer';
 import { generatePlan, formatTime, formatDuration, getPlanSummary } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -46,20 +47,8 @@ export default function StudyPlanPage() {
   const [plan, setPlan] = useLocalStorage<StudyPlan | null>(STORAGE_KEYS.plan, null);
   const [, setQuizResults] = useLocalStorage<QuizResult[]>(STORAGE_KEYS.quizResults, []);
   const [timer, setTimer] = useLocalStorage<TimerState | null>(STORAGE_KEYS.activeTimer, null);
+  const { toggle: toggleTimer } = useTimer(timer, setTimer);
   const [showRegenerate, setShowRegenerate] = useState(false);
-
-  useEffect(() => {
-    if (!timer?.running) return;
-    const interval = window.setInterval(() => {
-      setTimer((current) => {
-        if (!current?.running) return current;
-        const elapsed = Math.max(1, Math.floor((Date.now() - current.updatedAt) / 1000));
-        const remainingSeconds = Math.max(0, current.remainingSeconds - elapsed);
-        return { ...current, remainingSeconds, running: remainingSeconds > 0, updatedAt: Date.now() };
-      });
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [setTimer, timer?.running]);
 
   // Auto-generate plan when setup is ready but no plan exists yet
   useEffect(() => {
@@ -95,14 +84,6 @@ export default function StudyPlanPage() {
       topicName: block.topicName,
     })) return;
     navigate('/quiz');
-  };
-
-  const toggleTimer = (block: TimeBlock) => {
-    if (timer?.blockId === block.id) {
-      setTimer({ ...timer, running: !timer.running, updatedAt: Date.now() });
-      return;
-    }
-    setTimer({ blockId: block.id, remainingSeconds: Math.max(60, Math.round(block.duration * 3600)), running: true, updatedAt: Date.now() });
   };
 
   const handleRegenerate = () => {
@@ -246,7 +227,7 @@ export default function StudyPlanPage() {
               onToggle={() => toggleBlock(block.id)}
               onStartQuiz={() => handleStartQuiz(block)}
               timer={timer?.blockId === block.id ? timer : null}
-              onToggleTimer={() => toggleTimer(block)}
+              onToggleTimer={() => toggleTimer(block.id, Math.max(60, Math.round(block.duration * 3600)))}
             />
           );
         })}
