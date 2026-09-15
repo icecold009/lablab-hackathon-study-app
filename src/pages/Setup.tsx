@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import type { SprintSetup, StudyPlan, QuizResult, TopicSetup, Confidence, Importance } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { clearStoredValue } from '../storage/browserStore';
+import { STORAGE_KEYS } from '../storage/schema';
 import { getSampleSetup } from '../data/sampleData';
 import { generatePlan } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
@@ -66,9 +68,9 @@ function FieldError({ message }: { message?: string }) {
 
 export default function Setup() {
   const navigate = useNavigate();
-  const [setup, setSetup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
-  const [, setPlan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
-  const [, setQuizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
+  const [setup, setSetup] = useLocalStorage<SprintSetup | null>(STORAGE_KEYS.setup, null);
+  const [, setPlan] = useLocalStorage<StudyPlan | null>(STORAGE_KEYS.plan, null);
+  const [, setQuizResults] = useLocalStorage<QuizResult[]>(STORAGE_KEYS.quizResults, []);
 
   const [examName, setExamName] = useState(setup?.examName || '');
   const [examHours, setExamHours] = useState(setup?.examHours || 48);
@@ -147,7 +149,7 @@ export default function Setup() {
     const plan = generatePlan(sprintSetup);
     setPlan(plan);
     setQuizResults([]);
-    localStorage.removeItem('icecold-quiz-topic');
+    clearStoredValue(STORAGE_KEYS.quizTopic);
 
     // Navigate to plan page
     navigate('/plan');
@@ -180,7 +182,7 @@ export default function Setup() {
     const plan = generatePlan(sprintSetup);
     setPlan(plan);
     setQuizResults([]);
-    localStorage.removeItem('icecold-quiz-topic');
+    clearStoredValue(STORAGE_KEYS.quizTopic);
 
     setTimeout(() => {
       setGenerating(false);
@@ -192,7 +194,7 @@ export default function Setup() {
     setSetup(null);
     setPlan(null);
     setQuizResults([]);
-    localStorage.removeItem('icecold-quiz-topic');
+    clearStoredValue(STORAGE_KEYS.quizTopic);
     setExamName('');
     setExamHours(48);
     setStudyHours(10);

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import type { QuizResult, StudyPlan, SprintSetup } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { persistStoredValue } from '../storage/browserStore';
+import { STORAGE_KEYS } from '../storage/schema';
 import { getTopicPriorityScore } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -15,9 +17,9 @@ import EmptyState from '../components/ui/EmptyState';
 
 export default function Progress() {
   const navigate = useNavigate();
-  const [setup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
-  const [plan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
-  const [quizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
+  const [setup] = useLocalStorage<SprintSetup | null>(STORAGE_KEYS.setup, null);
+  const [plan] = useLocalStorage<StudyPlan | null>(STORAGE_KEYS.plan, null);
+  const [quizResults] = useLocalStorage<QuizResult[]>(STORAGE_KEYS.quizResults, []);
 
   const hasData = (plan && plan.blocks.length > 0) || quizResults.length > 0;
 
@@ -322,10 +324,10 @@ export default function Progress() {
                 <span className="text-sm text-foreground">{area}</span>
                 <Button
                   onClick={() => {
-                    localStorage.setItem('icecold-quiz-topic', JSON.stringify({
+                    if (!persistStoredValue(STORAGE_KEYS.quizTopic, {
                       topicName: area,
                       topicId: setup?.topics.find(t => t.name === area)?.id || '',
-                    }));
+                    })) return;
                     navigate('/quiz');
                   }}
                   variant="danger"
@@ -345,10 +347,10 @@ export default function Progress() {
           <Button
             onClick={() => {
               const firstWeak = stats.weakAreas[0];
-              localStorage.setItem('icecold-quiz-topic', JSON.stringify({
+              if (!persistStoredValue(STORAGE_KEYS.quizTopic, {
                 topicName: firstWeak,
                 topicId: setup?.topics.find(t => t.name === firstWeak)?.id || '',
-              }));
+              })) return;
               navigate('/quiz');
             }}
             variant="danger"

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import type { QuizQuestion, QuizResult, StudyPlan, SprintSetup } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { clearStoredValue, readStoredValue } from '../storage/browserStore';
+import { STORAGE_KEYS, type QuizTopicSelection } from '../storage/schema';
 import { generateTopicQuiz, checkAnswer } from '../utils/quizGenerator';
 import { getTopicPriorityScore } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
@@ -18,12 +20,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 type Stage = 'select' | 'taking' | 'results';
 
 function readPersistedSetup(): SprintSetup | null {
-  try {
-    const item = localStorage.getItem('icecold-setup');
-    return item ? (JSON.parse(item) as SprintSetup) : null;
-  } catch {
-    return null;
-  }
+  return readStoredValue<SprintSetup | null>(STORAGE_KEYS.setup, null).value;
 }
 
 /* ── Skeleton loader ────────────────────────────────────────── */
@@ -42,9 +39,9 @@ function QuizSkeleton() {
 
 export default function TopicQuiz() {
   const navigate = useNavigate();
-  const [plan, setPlan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
-  const [setup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
-  const [, setQuizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
+  const [plan, setPlan] = useLocalStorage<StudyPlan | null>(STORAGE_KEYS.plan, null);
+  const [setup] = useLocalStorage<SprintSetup | null>(STORAGE_KEYS.setup, null);
+  const [, setQuizResults] = useLocalStorage<QuizResult[]>(STORAGE_KEYS.quizResults, []);
 
   const [stage, setStage] = useState<Stage>('select');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
@@ -177,11 +174,11 @@ export default function TopicQuiz() {
     setSelectedTopicName('');
     setQuestions([]);
     setFinished(false);
-    localStorage.removeItem('icecold-quiz-topic');
+    clearStoredValue(STORAGE_KEYS.quizTopic);
   };
 
   const handleBackToPlan = () => {
-    localStorage.removeItem('icecold-quiz-topic');
+    clearStoredValue(STORAGE_KEYS.quizTopic);
     navigate('/plan');
   };
 
@@ -256,34 +253,28 @@ export default function TopicQuiz() {
     // is available instead of deleting it as an invalid topic.
     const persistedSetup = setup || readPersistedSetup();
     if (!persistedSetup) return;
-    const stored = localStorage.getItem('icecold-quiz-topic');
+    const stored = readStoredValue<QuizTopicSelection | null>(STORAGE_KEYS.quizTopic, null).value;
     if (!stored) return;
     if (autoStartHandledRef.current) return;
-    try {
-      const parsed = JSON.parse(stored);
-      const topic = persistedSetup.topics.find(t => t.id === parsed?.topicId);
-      if (!topic) {
-        localStorage.removeItem('icecold-quiz-topic');
-        return;
-      }
-
-      // Keep the marker through StrictMode's effect replay. Removing it
-      // before the second pass can leave the route mounted with no quiz.
-      autoStartHandledRef.current = true;
-      setSelectedTopicId(topic.id);
-      setSelectedTopicName(topic.name);
-      setQuestions(generateTopicQuiz(topic.name, 5));
-      setAnswers({});
-      setCurrentQ(0);
-      setShowExplanation(false);
-      setQuizScore(0);
-      setSubmittedQuestions([]);
-      setFinished(false);
-      setStage('taking');
-    } catch {
-      localStorage.removeItem('icecold-quiz-topic');
-      /* invalid JSON — ignore */
+    const topic = persistedSetup.topics.find(t => t.id === stored.topicId);
+    if (!topic) {
+      clearStoredValue(STORAGE_KEYS.quizTopic);
+      return;
     }
+
+    // Keep the marker through StrictMode's effect replay. Removing it
+    // before the second pass can leave the route mounted with no quiz.
+    autoStartHandledRef.current = true;
+    setSelectedTopicId(topic.id);
+    setSelectedTopicName(topic.name);
+    setQuestions(generateTopicQuiz(topic.name, 5));
+    setAnswers({});
+    setCurrentQ(0);
+    setShowExplanation(false);
+    setQuizScore(0);
+    setSubmittedQuestions([]);
+    setFinished(false);
+    setStage('taking');
   }, [stage, setup, topics]);
 
   const totalQ = questions.length || 5;

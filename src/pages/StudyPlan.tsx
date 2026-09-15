@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import type { QuizResult, SprintSetup, StudyPlan, TimeBlock, TimerState } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { clearStoredValue, persistStoredValue } from '../storage/browserStore';
+import { STORAGE_KEYS } from '../storage/schema';
 import { generatePlan, formatTime, formatDuration, getPlanSummary } from '../utils/planGenerator';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -40,10 +42,10 @@ function getBlockState(
 /* ── Page component ───────────────────────────────────────── */
 export default function StudyPlanPage() {
   const navigate = useNavigate();
-  const [setup] = useLocalStorage<SprintSetup | null>('icecold-setup', null);
-  const [plan, setPlan] = useLocalStorage<StudyPlan | null>('icecold-plan', null);
-  const [, setQuizResults] = useLocalStorage<QuizResult[]>('icecold-quiz-results', []);
-  const [timer, setTimer] = useLocalStorage<TimerState | null>('icecold-active-timer', null);
+  const [setup] = useLocalStorage<SprintSetup | null>(STORAGE_KEYS.setup, null);
+  const [plan, setPlan] = useLocalStorage<StudyPlan | null>(STORAGE_KEYS.plan, null);
+  const [, setQuizResults] = useLocalStorage<QuizResult[]>(STORAGE_KEYS.quizResults, []);
+  const [timer, setTimer] = useLocalStorage<TimerState | null>(STORAGE_KEYS.activeTimer, null);
   const [showRegenerate, setShowRegenerate] = useState(false);
 
   useEffect(() => {
@@ -88,15 +90,10 @@ export default function StudyPlanPage() {
   };
 
   const handleStartQuiz = (block: TimeBlock) => {
-    try {
-      localStorage.setItem('icecold-quiz-topic', JSON.stringify({
-        topicId: block.topicId,
-        topicName: block.topicName,
-      }));
-    } catch {
-      window.dispatchEvent(new CustomEvent('icecold:storage-error', { detail: { key: 'icecold-quiz-topic' } }));
-      return;
-    }
+    if (!persistStoredValue(STORAGE_KEYS.quizTopic, {
+      topicId: block.topicId,
+      topicName: block.topicName,
+    })) return;
     navigate('/quiz');
   };
 
@@ -114,11 +111,7 @@ export default function StudyPlanPage() {
     setPlan(generated);
     setQuizResults([]);
     setTimer(null);
-    try {
-      localStorage.removeItem('icecold-quiz-topic');
-    } catch {
-      window.dispatchEvent(new CustomEvent('icecold:storage-error', { detail: { key: 'icecold-quiz-topic' } }));
-    }
+    clearStoredValue(STORAGE_KEYS.quizTopic);
     setShowRegenerate(false);
   };
 

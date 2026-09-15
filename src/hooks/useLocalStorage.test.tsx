@@ -20,7 +20,10 @@ describe('useLocalStorage characterization', () => {
     })
 
     expect(result.current[0]).toBe(2)
-    expect(window.localStorage.getItem('counter')).toBe('2')
+    expect(JSON.parse(window.localStorage.getItem('counter')!)).toEqual({
+      version: 1,
+      data: 2,
+    })
   })
 
   it('falls back on corrupt JSON and emits a storage error event', () => {
@@ -33,7 +36,7 @@ describe('useLocalStorage characterization', () => {
 
     expect(result.current[0]).toBeNull()
     expect(errors).toHaveLength(1)
-    expect(errors[0]?.detail).toEqual({ key: 'corrupt' })
+    expect(errors[0]?.detail).toEqual(expect.objectContaining({ key: 'corrupt', status: 'corrupt' }))
     window.removeEventListener('icecold:storage-error', handleError)
   })
 
@@ -52,7 +55,7 @@ describe('useLocalStorage characterization', () => {
 
     expect(result.current[0]).toBe('after')
     expect(errors).toHaveLength(1)
-    expect(errors[0]?.detail).toEqual({ key: 'quota' })
+    expect(errors[0]?.detail).toEqual(expect.objectContaining({ key: 'quota', status: 'write-failed' }))
     window.removeEventListener('icecold:storage-error', handleError)
   })
 
@@ -68,6 +71,15 @@ describe('useLocalStorage characterization', () => {
     })
 
     expect(result.current[0]).toBe('from another tab')
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'shared',
+        newValue: null,
+      }))
+    })
+
+    expect(result.current[0]).toBe('initial')
     unmount()
     expect(removeEventListener).toHaveBeenCalledWith('storage', expect.any(Function))
   })
