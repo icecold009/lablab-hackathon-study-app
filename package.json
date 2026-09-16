@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run build",
     "test": "vitest",
+    "test:e2e": "npm run build && node scripts/e2e.mjs",
     "smoke": "node scripts/smoke.mjs",
     "preview": "vite preview"
   },

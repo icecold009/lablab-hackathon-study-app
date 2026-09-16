@@ -129,6 +129,8 @@ export default function Setup() {
     setPlan(null)
     setQuizResults([])
     clearStoredValue(STORAGE_KEYS.quizTopic)
+    clearStoredValue(STORAGE_KEYS.activeTimer)
+    clearStoredValue(STORAGE_KEYS.activeQuiz)
     setExamName('')
     setExamHours(48)
     setStudyHours(10)
