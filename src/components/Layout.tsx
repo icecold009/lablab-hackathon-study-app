@@ -71,6 +71,10 @@ export default function Layout() {
         </div>
       </main>
 
+      <footer className="px-4 py-4 pb-20 text-center text-xs text-muted md:pb-4">
+        <a href="https://shauryasaria.me" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-primary">Personal website</a>
+      </footer>
+
       {/* Mobile Bottom Tab Bar */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-bg-card border-t border-border">
         <div className="flex items-center justify-around px-2 py-1">
